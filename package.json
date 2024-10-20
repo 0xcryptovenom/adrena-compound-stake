@@ -1,0 +1,34 @@
+{
+  "name": "adrena-compound-stake",
+  "description": "Node.js script / binary to automatically claim & re-stake Adrena Protocol's ALP / ADX staking rewards.",
+  "version": "0.1.0",
+  "author": "0xcryptovenom",
+  "type": "module",
+  "bin": {
+    "adrena-compound-stake": "dist/index.js"
+  },
+  "scripts": {
+    "build": "viteup",
+    "start": "node ./dist/index.js",
+    "typecheck": "tsc",
+    "check": "biome check src",
+    "check:fix": "npm run check -- --write",
+    "prepublishOnly": "npm run check && publint --strict"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.95.3",
+    "bignumber.js": "^9.1.2",
+    "bs58": "^6.0.0",
+    "tweetnacl": "^1.0.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.7.7",
+    "publint": "^0.2.11",
+    "typescript": "^5.6.3",
+    "vite-plugin-swc-transform": "^1.0.1",
+    "viteup": "^0.0.4"
+  }
+}
