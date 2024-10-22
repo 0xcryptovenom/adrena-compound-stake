@@ -26,11 +26,11 @@ process.on("SIGUSR2", () => {
 logger.log("initialized constants & user settings", SETTINGS);
 
 const secretKeys = initSecretKeysFromFile(
-  SETTINGS.WALLET_SECRET_KEYS_FILE_PATH,
+  SETTINGS.WALLET_SECRET_KEYS_FILE_PATH
 );
 
 logger.log(
-  `initializing user state for ${secretKeys.length} wallet secret keys ...`,
+  `initializing user state for ${secretKeys.length} wallet secret keys ...`
 );
 
 const state = await initializeUserState(secretKeys);
@@ -43,7 +43,7 @@ async function runForUser(user: (typeof state)["users"][string]) {
   for (const _stakedToken in STAKING_STAKED_TOKENS) {
     const stakedToken = _stakedToken as keyof typeof STAKING_STAKED_TOKENS;
 
-    logger.log("running resolve staking round + claim iteration", {
+    logger.log("running [resolve staking round] + claim iteration", {
       publicKey: user.keys.public.base58,
       stakedToken,
     });
@@ -55,7 +55,7 @@ async function runForUser(user: (typeof state)["users"][string]) {
         user.staking[stakedToken].userStakingPda,
         user.keys.public.key,
         user.tokens.USDC.ata,
-        user.tokens.ADX.ata,
+        user.tokens.ADX.ata
       ).transaction();
 
       logger.log("sending claim transaction ...", {
@@ -81,7 +81,10 @@ async function runForUser(user: (typeof state)["users"][string]) {
     await wait(RPC_WRITE_DELAY);
   }
 
+  logger.log("[resolve staking round] + claim loop completed!");
+  logger.log("checking ADX balance ...");
   const amount = await getTokenAccountBalance(CONNECTION, user.tokens.ADX.ata);
+  logger.log("retrieved ADX token balance!", { amount });
 
   if (!!amount && !amount.isZero()) {
     try {
@@ -93,11 +96,11 @@ async function runForUser(user: (typeof state)["users"][string]) {
           user.keys.public.buffer,
           user.tokens.USDC.ata,
           user.tokens.ADX.ata,
-          amount,
+          amount
         );
       const stakeTx = await addLiquidADXStakeMethodBuilder.transaction();
 
-      logger.log("sending liquid stake transaction!", {
+      logger.log("sending liquid stake transaction ...", {
         publicKey: user.keys.public.base58,
         amount: nativeToUi(amount, TOKENS.ADX.decimals),
       });
@@ -116,6 +119,8 @@ async function runForUser(user: (typeof state)["users"][string]) {
     } catch (err) {
       logger.error("Failed to stake", { err });
     }
+  } else {
+    logger.log("empty ADX token balance, skipping ...", { amount });
   }
 }
 
@@ -149,7 +154,7 @@ async function run(resolve = true, current = true, schedule = true) {
         }
 
         const nextRoundStartDate = getNextStakingRoundStartDate(
-          programFetchedStakingAccount.currentStakingRound.startTime.toNumber(),
+          programFetchedStakingAccount.currentStakingRound.startTime.toNumber()
         );
 
         const nextRound = { stakedToken, date: nextRoundStartDate };
@@ -166,7 +171,7 @@ async function run(resolve = true, current = true, schedule = true) {
       },
       Promise.resolve([]) as Promise<
         Array<{ stakedToken: keyof typeof STAKING_STAKED_TOKENS; date: Date }>
-      >,
+      >
     )
   ).sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -186,7 +191,7 @@ async function run(resolve = true, current = true, schedule = true) {
         {
           round,
           resolve,
-        },
+        }
       );
       if (!resolve) {
         continue;
@@ -198,7 +203,7 @@ async function run(resolve = true, current = true, schedule = true) {
         {
           publicKey: user.keys.public.base58,
           round,
-        },
+        }
       );
 
       try {
@@ -206,7 +211,7 @@ async function run(resolve = true, current = true, schedule = true) {
           await makeResolveStakingRoundMethodBuilder(
             user.program,
             round.stakedToken,
-            user.keys.public.key,
+            user.keys.public.key
           ).transaction();
 
         await customSendAndConfirmTransaction({
@@ -250,7 +255,7 @@ async function run(resolve = true, current = true, schedule = true) {
     const deltaSeconds = deltaMs * 1_000;
     const deltaMinutes = deltaSeconds * 60;
 
-    const delaySeconds = (schedule ? 1 : 0) * ((0.5 + Math.random()) * 60 * 3);
+    const delaySeconds = (0.5 + Math.random()) * 60 * 3;
     const delayMinutes = delaySeconds / 60;
 
     const nextRunMs = delaySeconds * 1_000 + deltaMs;
@@ -261,7 +266,6 @@ async function run(resolve = true, current = true, schedule = true) {
       "scheduling next run on farthest staking round with an included artificial delay",
       {
         farthestRound,
-        now: new Date(),
         deltaMs,
         deltaSeconds,
         deltaMinutes,
@@ -269,7 +273,9 @@ async function run(resolve = true, current = true, schedule = true) {
         delayMinutes,
         nextRunSeconds,
         nextRunMinutes,
-      },
+        now: new Date().toISOString(),
+        nextRun: new Date(Date.now() + nextRunMs).toISOString(),
+      }
     );
 
     setTimeout(run, nextRunMs, SETTINGS.RESOLVE_STAKING_ROUNDS, true, true);
@@ -279,5 +285,5 @@ async function run(resolve = true, current = true, schedule = true) {
 run(
   SETTINGS.RESOLVE_STAKING_ROUNDS,
   SETTINGS.RUN_CURRENT_ROUND,
-  SETTINGS.SCHEDULE_NEXT_ROUNDS,
+  SETTINGS.SCHEDULE_NEXT_ROUNDS
 );

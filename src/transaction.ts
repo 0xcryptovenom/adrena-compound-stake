@@ -3,8 +3,11 @@ import type { Connection, Transaction } from "@solana/web3.js";
 
 import { logger } from "./logger";
 import { wait } from "./utils";
+import { DEFAULT_RPC_URL, SETTINGS } from "./settings";
+import { RPC_WRITE_DELAY } from "./connection";
 
-export const REBROADCAST_POLLING_DELAY = 5_000;
+export const REBROADCAST_POLLING_DELAY =
+  SETTINGS.RPC_URL === DEFAULT_RPC_URL ? 15_000 : 5_000;
 export const DEFAULT_REBROADCAST = true;
 export const DEFAULT_MAX_RESIGNS = 5;
 
@@ -45,7 +48,7 @@ export async function customSendAndConfirmTransaction({
   });
   const signature = await connection.sendRawTransaction(
     serialized,
-    SEND_OPTIONS,
+    SEND_OPTIONS
   );
 
   logger.debug("Sent transaction", { signature, lastValidBlockHeight });
@@ -65,7 +68,7 @@ export async function customSendAndConfirmTransaction({
       },
       () => {
         status = "failed";
-      },
+      }
     );
 
   if (!rebroadcast) {
@@ -82,6 +85,8 @@ export async function customSendAndConfirmTransaction({
     connection.sendRawTransaction(serialized, SEND_OPTIONS);
     blockHeight = await connection.getBlockHeight();
   }
+
+  await wait(RPC_WRITE_DELAY);
 
   status = status !== "confirmed" ? "failed" : "confirmed";
 
