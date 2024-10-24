@@ -48,7 +48,7 @@ export async function customSendAndConfirmTransaction({
   });
   const signature = await connection.sendRawTransaction(
     serialized,
-    SEND_OPTIONS,
+    SEND_OPTIONS
   );
 
   logger.debug("Sent transaction", { signature, lastValidBlockHeight });
@@ -68,7 +68,7 @@ export async function customSendAndConfirmTransaction({
       },
       () => {
         status = "failed";
-      },
+      }
     );
 
   if (!rebroadcast) {
@@ -77,7 +77,7 @@ export async function customSendAndConfirmTransaction({
 
   while (blockHeight < lastValidBlockHeight && status !== "confirmed") {
     await wait(REBROADCAST_POLLING_DELAY);
-    logger.debug("sneding ...", {
+    logger.debug("broadcasting transaction ...", {
       signature,
       blockHeight,
       lastValidBlockHeight,
@@ -91,9 +91,8 @@ export async function customSendAndConfirmTransaction({
   status = status !== "confirmed" ? "failed" : "confirmed";
 
   if (status === "failed") {
-    logger.error("Sneding transaction failed", { signature });
     if (maxResigns > 0) {
-      logger.log("Re-signing ...");
+      logger.log("Re-signing transaction ...", { maxResigns });
       return await customSendAndConfirmTransaction({
         connection,
         transaction,

@@ -10,6 +10,7 @@ const envVarRequired = (val: string | undefined, error: Error) => {
 };
 
 export const DEFAULT_RPC_URL = "https://api.mainnet-beta.solana.com";
+export const DEFAULT_SCHEDULE_PING_INTERVAL_SECONDS = 10 * 60;
 
 export const SETTINGS = {
   DEBUG: envVarToBooleanDefaultFalse(process.env.DEBUG),
@@ -21,6 +22,13 @@ export const SETTINGS = {
   SCHEDULE_NEXT_ROUNDS: envVarToBooleanDefaultTrue(
     process.env.SCHEDULE_NEXT_ROUNDS,
   ),
+  CLAIM_REWARDS: envVarToBooleanDefaultTrue(process.env.CLAIM_REWARDS),
+  UPGRADE_MAX_LOCKED_ADX_STAKE: envVarToBooleanDefaultFalse(
+    process.env.UPGRADE_MAX_LOCKED_ADX_STAKE,
+  ),
+  SCHEDULE_PING_INTERVAL_SECONDS:
+    Number(process.env.DEFAULT_SCHEDULE_PING_INTERVAL_SECONDS) ||
+    DEFAULT_SCHEDULE_PING_INTERVAL_SECONDS,
   WALLET_SECRET_KEYS_FILE_PATH: envVarRequired(
     process.env.WALLET_SECRET_KEYS_FILE_PATH,
     new Error(

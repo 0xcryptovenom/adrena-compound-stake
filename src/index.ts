@@ -1,11 +1,15 @@
 #!/usr/bin/env node
+import type anchor from "@coral-xyz/anchor";
 
 import { getTokenAccountBalance } from "./accounts.js";
 import { nativeToUi } from "./amount.js";
 import { CONNECTION, RPC_READ_DELAY, RPC_WRITE_DELAY } from "./connection.js";
 import { makeClaimStakesMethodBuilder } from "./instructions/claim.js";
 import { makeResolveStakingRoundMethodBuilder } from "./instructions/resolve-staking-round.js";
-import { makeAddLiquidADXStakeMethodBuilder } from "./instructions/stake.js";
+import {
+  makeAddLiquidADXStakeMethodBuilder,
+  makeUpgradeLockedADXStakeMethodBuilder,
+} from "./instructions/stake.js";
 import { initSecretKeysFromFile } from "./keys.js";
 import { logger } from "./logger.js";
 import { READ_ONLY_ADRENA_PROGRAM } from "./programs/adrena.js";
@@ -42,6 +46,10 @@ await wait(RPC_READ_DELAY);
 async function runForUser(user: (typeof state)["users"][string]) {
   for (const _stakedToken in STAKING_STAKED_TOKENS) {
     const stakedToken = _stakedToken as keyof typeof STAKING_STAKED_TOKENS;
+
+    if (!SETTINGS.CLAIM_REWARDS) {
+      continue;
+    }
 
     logger.log("running [resolve staking round] + claim iteration", {
       publicKey: user.keys.public.base58,
@@ -87,44 +95,100 @@ async function runForUser(user: (typeof state)["users"][string]) {
   logger.log("retrieved ADX token balance!", { amount });
 
   if (!!amount && !amount.isZero()) {
-    try {
-      const addLiquidADXStakeMethodBuilder =
-        await makeAddLiquidADXStakeMethodBuilder(
-          user.program,
-          user.staking.ADX.userStakingPda,
-          user.keys.public.key,
-          user.keys.public.buffer,
-          user.tokens.USDC.ata,
-          user.tokens.ADX.ata,
-          amount,
-        );
-      const stakeTx = await addLiquidADXStakeMethodBuilder.transaction();
+    const maxLockedStakeResolutionThreadId = (
+      SETTINGS.UPGRADE_MAX_LOCKED_ADX_STAKE &&
+      !!user.staking.ADX.stakes.locked.active.maxLocked[0] &&
+      typeof user.staking.ADX.stakes.locked.active.maxLocked[0] === "object" &&
+      "stakeResolutionThreadId" in
+        user.staking.ADX.stakes.locked.active.maxLocked[0] &&
+      !!user.staking.ADX.stakes.locked.active.maxLocked[0]
+        .stakeResolutionThreadId
+        ? user.staking.ADX.stakes.locked.active.maxLocked[0]
+            .stakeResolutionThreadId
+        : null
+    ) as anchor.BN;
+    if (maxLockedStakeResolutionThreadId) {
+      try {
+        const addLiquidADXStakeMethodBuilder =
+          await makeUpgradeLockedADXStakeMethodBuilder({
+            program: user.program,
+            userStakingPda: user.staking.ADX.userStakingPda,
+            owner: user.keys.public.key,
+            ownerBuffer: user.keys.public.buffer,
+            stakingRewardAta: user.tokens.USDC.ata,
+            stakingRewardLmAta: user.tokens.ADX.ata,
+            stakeResolutionThreadId: maxLockedStakeResolutionThreadId,
+            amount,
+          });
+        const stakeTx = await addLiquidADXStakeMethodBuilder.transaction();
 
-      logger.log("sending liquid stake transaction ...", {
-        publicKey: user.keys.public.base58,
-        amount: nativeToUi(amount, TOKENS.ADX.decimals),
-      });
-
-      await customSendAndConfirmTransaction({
-        connection: CONNECTION,
-        transaction: stakeTx,
-        wallet: user.wallet,
-      }).then((signature) => {
-        logger.log("confirmed stake transaction!", {
+        logger.log("sending upgrade max-locked stake transaction ...", {
           publicKey: user.keys.public.base58,
-          amount,
-          signature,
+          amount: nativeToUi(amount, TOKENS.ADX.decimals),
         });
-      });
-    } catch (err) {
-      logger.error("Failed to stake", { err });
+
+        await customSendAndConfirmTransaction({
+          connection: CONNECTION,
+          transaction: stakeTx,
+          wallet: user.wallet,
+        }).then((signature) => {
+          logger.log("confirmed upgrade max-locked stake transaction!", {
+            publicKey: user.keys.public.base58,
+            amount,
+            signature,
+          });
+        });
+      } catch (err) {
+        logger.error("failed to upgrade max-locked stake", { err });
+      }
+    } else {
+      try {
+        const addLiquidADXStakeMethodBuilder =
+          await makeAddLiquidADXStakeMethodBuilder({
+            program: user.program,
+            userStakingPda: user.staking.ADX.userStakingPda,
+            owner: user.keys.public.key,
+            ownerBuffer: user.keys.public.buffer,
+            stakingRewardAta: user.tokens.USDC.ata,
+            stakingRewardLmAta: user.tokens.ADX.ata,
+            amount,
+          });
+        const stakeTx = await addLiquidADXStakeMethodBuilder.transaction();
+
+        logger.log("sending liquid stake transaction ...", {
+          publicKey: user.keys.public.base58,
+          amount: nativeToUi(amount, TOKENS.ADX.decimals),
+        });
+
+        await customSendAndConfirmTransaction({
+          connection: CONNECTION,
+          transaction: stakeTx,
+          wallet: user.wallet,
+        }).then((signature) => {
+          logger.log("confirmed liquid stake transaction!", {
+            publicKey: user.keys.public.base58,
+            amount,
+            signature,
+          });
+        });
+      } catch (err) {
+        logger.error("failed to add liquid stake", { err });
+      }
     }
   } else {
     logger.log("empty ADX token balance, skipping ...", { amount });
   }
 }
 
-async function run(resolve = true, current = true, schedule = true) {
+async function run({
+  resolveStakingRounds,
+  runCurrentRound,
+  scheduleNextRounds,
+}: {
+  resolveStakingRounds: boolean;
+  runCurrentRound: boolean;
+  scheduleNextRounds: boolean;
+}) {
   logger.debug("running staking round threads checking loop");
 
   const nextRounds = (
@@ -177,7 +241,7 @@ async function run(resolve = true, current = true, schedule = true) {
 
   const users = Object.values(state.users);
   if (!users.length) {
-    logger.log("No users initialized in state, exiting.");
+    logger.log("no users initialized in state, exiting.");
     return process.exit(0);
   }
 
@@ -190,10 +254,10 @@ async function run(resolve = true, current = true, schedule = true) {
         "encountered stale round which needs to be resolved before rewards can be claimed ...",
         {
           round,
-          resolve,
+          resolveStakingRounds,
         },
       );
-      if (!resolve) {
+      if (!resolveStakingRounds) {
         continue;
       }
 
@@ -225,29 +289,33 @@ async function run(resolve = true, current = true, schedule = true) {
           });
         });
       } catch (err) {
-        logger.error("Failed to resolve staking round", { round, err });
+        logger.error("failed to resolve staking round!", { round, err });
       }
 
       await wait(RPC_WRITE_DELAY);
     }
   }
 
-  if (staleRounds && resolve) {
+  if (staleRounds && resolveStakingRounds) {
     // We attempted to resolve stale rounds... Let's re-run.
     // We're only attempting to resolve stale rounds once.
-    return run(false, true, schedule);
+    return run({
+      resolveStakingRounds: false,
+      runCurrentRound: true,
+      scheduleNextRounds,
+    });
   }
 
-  if (current) {
+  if (runCurrentRound) {
     for (const user of Object.values(state.users)) {
       await runForUser(user);
     }
   }
 
-  if (schedule) {
+  if (scheduleNextRounds) {
     const farthestRound = nextRounds[0];
     if (!farthestRound) {
-      logger.error("No next round found, exiting...");
+      logger.error("no next round found, exiting...");
       return;
     }
 
@@ -255,19 +323,17 @@ async function run(resolve = true, current = true, schedule = true) {
     const deltaSeconds = deltaMs / 1_000;
     const deltaMinutes = deltaSeconds / 60;
 
-    logger.log(
-      "scheduling next run on farthest staking round with an included artificial delay",
-      {
-        farthestRound,
-        deltaMs,
-        deltaSeconds,
-        deltaMinutes,
-        now: new Date().toISOString(),
-        nextRun: new Date(Date.now() + deltaMs).toISOString(),
-      },
-    );
+    logger.log("scheduling next run on farthest staking round", {
+      farthestRound,
+      deltaMs,
+      deltaSeconds,
+      deltaMinutes,
+      now: new Date().toISOString(),
+      nextRun: new Date(Date.now() + deltaMs).toISOString(),
+    });
 
-    const SCHEDULE_PING_INTERVAL_MS = 10 * 60 * 1_000;
+    const SCHEDULE_PING_INTERVAL_MS =
+      SETTINGS.SCHEDULE_PING_INTERVAL_SECONDS * 1_000;
     let remaining = deltaMs;
     function schedulePingCheck() {
       remaining = farthestRound.date.getTime() - Date.now();
@@ -279,14 +345,22 @@ async function run(resolve = true, current = true, schedule = true) {
         setTimeout(schedulePingCheck, SCHEDULE_PING_INTERVAL_MS);
         return;
       }
-      setTimeout(run, remaining, SETTINGS.RESOLVE_STAKING_ROUNDS, true, true);
+      setTimeout(
+        () =>
+          run({
+            resolveStakingRounds: SETTINGS.RESOLVE_STAKING_ROUNDS,
+            runCurrentRound: true,
+            scheduleNextRounds: true,
+          }),
+        remaining,
+      );
     }
     schedulePingCheck();
   }
 }
 
-run(
-  SETTINGS.RESOLVE_STAKING_ROUNDS,
-  SETTINGS.RUN_CURRENT_ROUND,
-  SETTINGS.SCHEDULE_NEXT_ROUNDS,
-);
+run({
+  resolveStakingRounds: SETTINGS.RESOLVE_STAKING_ROUNDS,
+  runCurrentRound: SETTINGS.RUN_CURRENT_ROUND,
+  scheduleNextRounds: SETTINGS.SCHEDULE_NEXT_ROUNDS,
+});

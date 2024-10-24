@@ -10,7 +10,7 @@ import {
   getUserStakingAccount,
   getUserStakingPda,
 } from "./accounts";
-import { nativeToUi } from "./amount";
+import { nativeToNumber, nativeToUi } from "./amount";
 import { CONNECTION, RPC_READ_DELAY } from "./connection";
 import { logger } from "./logger";
 import { ADRENA_TOKENS, TOKENS } from "./tokens";
@@ -77,6 +77,9 @@ export const STAKING_RELEVANT_TOKENS = [
   ...Object.keys(STAKING_STAKED_TOKENS),
 ] as const;
 
+export const MAX_LOCK_DURATION_DAYS = 540;
+export const ONE_DAY_SECONDS = 3_600 * 24;
+
 export function getUserStaking(publicKeyBuffer: Buffer) {
   return Object.keys(STAKING_STAKED_TOKENS).reduce(
     async (accP, _token) => {
@@ -98,7 +101,95 @@ export function getUserStaking(publicKeyBuffer: Buffer) {
         userStakingPda &&
         (await getUserStakingAccount(CONNECTION, userStakingPda));
 
-      const liquidStakeAmountNative = userStakingAccount?.liquidStake.amount;
+      const liquidStakeAmountNative = userStakingAccount?.liquidStake
+        .amount as anchor.BN | null;
+
+      const stakes = {
+        liquid: {
+          amount: {
+            native: liquidStakeAmountNative,
+            ui:
+              liquidStakeAmountNative !== null
+                ? nativeToUi(liquidStakeAmountNative, decimals)
+                : 0,
+          },
+        },
+        locked: (userStakingAccount?.lockedStakes ?? []).reduce(
+          (acc, curr) => {
+            const item = {
+              ...curr,
+              amountUi: nativeToUi(curr.amount, decimals),
+              lockDurationDays:
+                nativeToNumber(curr.lockDuration) / ONE_DAY_SECONDS,
+            };
+
+            if (item.amount === 0) {
+              acc.empty.push(item);
+            } else {
+              if (item.lockDurationDays === MAX_LOCK_DURATION_DAYS) {
+                acc.active.maxLocked.push(item);
+              }
+              acc.active.other.push(item);
+
+              acc.active.maxLocked.sort(
+                (a: { amountUi: number }, b: { amountUi: number }) =>
+                  a.amountUi - b.amountUi,
+              );
+              acc.active.other.sort(
+                (
+                  a: { lockDurationDays: number },
+                  b: { lockDurationDays: number },
+                ) => b.lockDurationDays - a.lockDurationDays,
+              );
+            }
+
+            acc.amount.native =
+              acc.amount.native !== null
+                ? acc.amount.native.add(curr.amount)
+                : curr.amount;
+            acc.amount.ui = nativeToUi(acc.amount.native, decimals);
+
+            return acc;
+          },
+          {
+            empty: [],
+            active: { maxLocked: [], other: [] },
+            amount: { native: null, ui: 0 },
+          } as {
+            empty: Array<unknown>;
+            active: { maxLocked: Array<unknown>; other: Array<unknown> };
+            amount: { native: anchor.BN | null; ui: number };
+          },
+        ),
+      };
+
+      logger.log("initialized user stakes!", {
+        token,
+        stakes: {
+          liquid: stakes.liquid.amount.ui > 0,
+          locked:
+            stakes.locked.active.maxLocked.length +
+            stakes.locked.active.other.length,
+          maxLocked: stakes.locked.active.maxLocked.length,
+          lowestAmountMaxLockedAmount:
+            stakes.locked.active.maxLocked[0]?.amountUi ?? null,
+        },
+      });
+
+      //      console.log(
+      //        stakes.locked.active.maxLocked.map((stake: { [x: string]: any }) =>
+      //          [
+      //            "stakeTime",
+      //            "claimTime",
+      //            "endTime",
+      //            "amountWithRewardMultiplier",
+      //            "amountWithLmRewardMultiplier",
+      //            "lockDuration",
+      //            "lockDurationDays",
+      //            "amountUi"
+      //          ].map((prop) => ({ [prop]: nativeToNumber(stake[prop]) }))
+      //        )
+      //      );
 
       return {
         ...acc,
@@ -106,44 +197,7 @@ export function getUserStaking(publicKeyBuffer: Buffer) {
           name: token,
           userStakingPda,
           userStakingAccount,
-          stakes: {
-            liquid: {
-              amount: {
-                native: liquidStakeAmountNative,
-                ui:
-                  liquidStakeAmountNative !== null
-                    ? nativeToUi(liquidStakeAmountNative, decimals)
-                    : 0,
-              },
-            },
-            locked: (userStakingAccount?.lockedStakes ?? []).reduce(
-              (acc, curr) => {
-                if (curr.amount.isZero()) {
-                  acc.stakes.empty.push(curr);
-                } else {
-                  acc.stakes.active.push(curr);
-                }
-
-                acc.total.amount.native =
-                  acc.total.amount.native !== null
-                    ? acc.total.amount.native.add(curr.amount)
-                    : curr.amount;
-                acc.total.amount.ui = nativeToUi(
-                  acc.total.amount.native,
-                  decimals,
-                );
-
-                return acc;
-              },
-              {
-                stakes: { empty: [], active: [] },
-                total: { amount: { native: null, ui: 0 } },
-              } as {
-                stakes: { empty: Array<unknown>; active: Array<unknown> };
-                total: { amount: { native: anchor.BN | null; ui: number } };
-              },
-            ),
-          },
+          stakes,
         },
       };
     },
@@ -160,8 +214,9 @@ export function getUserStaking(publicKeyBuffer: Buffer) {
             };
           };
           locked: {
-            stakes: Array<unknown>;
-            total: { amount: { native: anchor.BN | null; ui: number } };
+            empty: Array<unknown>;
+            active: { maxLocked: Array<unknown>; other: Array<unknown> };
+            amount: { native: anchor.BN | null; ui: number };
           };
         };
       };
