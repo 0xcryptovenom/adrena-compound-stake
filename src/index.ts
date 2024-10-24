@@ -26,11 +26,11 @@ process.on("SIGUSR2", () => {
 logger.log("initialized constants & user settings", SETTINGS);
 
 const secretKeys = initSecretKeysFromFile(
-  SETTINGS.WALLET_SECRET_KEYS_FILE_PATH
+  SETTINGS.WALLET_SECRET_KEYS_FILE_PATH,
 );
 
 logger.log(
-  `initializing user state for ${secretKeys.length} wallet secret keys ...`
+  `initializing user state for ${secretKeys.length} wallet secret keys ...`,
 );
 
 const state = await initializeUserState(secretKeys);
@@ -55,7 +55,7 @@ async function runForUser(user: (typeof state)["users"][string]) {
         user.staking[stakedToken].userStakingPda,
         user.keys.public.key,
         user.tokens.USDC.ata,
-        user.tokens.ADX.ata
+        user.tokens.ADX.ata,
       ).transaction();
 
       logger.log("sending claim transaction ...", {
@@ -96,7 +96,7 @@ async function runForUser(user: (typeof state)["users"][string]) {
           user.keys.public.buffer,
           user.tokens.USDC.ata,
           user.tokens.ADX.ata,
-          amount
+          amount,
         );
       const stakeTx = await addLiquidADXStakeMethodBuilder.transaction();
 
@@ -154,7 +154,7 @@ async function run(resolve = true, current = true, schedule = true) {
         }
 
         const nextRoundStartDate = getNextStakingRoundStartDate(
-          programFetchedStakingAccount.currentStakingRound.startTime.toNumber()
+          programFetchedStakingAccount.currentStakingRound.startTime.toNumber(),
         );
 
         const nextRound = { stakedToken, date: nextRoundStartDate };
@@ -171,7 +171,7 @@ async function run(resolve = true, current = true, schedule = true) {
       },
       Promise.resolve([]) as Promise<
         Array<{ stakedToken: keyof typeof STAKING_STAKED_TOKENS; date: Date }>
-      >
+      >,
     )
   ).sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -191,7 +191,7 @@ async function run(resolve = true, current = true, schedule = true) {
         {
           round,
           resolve,
-        }
+        },
       );
       if (!resolve) {
         continue;
@@ -203,7 +203,7 @@ async function run(resolve = true, current = true, schedule = true) {
         {
           publicKey: user.keys.public.base58,
           round,
-        }
+        },
       );
 
       try {
@@ -211,7 +211,7 @@ async function run(resolve = true, current = true, schedule = true) {
           await makeResolveStakingRoundMethodBuilder(
             user.program,
             round.stakedToken,
-            user.keys.public.key
+            user.keys.public.key,
           ).transaction();
 
         await customSendAndConfirmTransaction({
@@ -269,21 +269,31 @@ async function run(resolve = true, current = true, schedule = true) {
         deltaMs,
         deltaSeconds,
         deltaMinutes,
-        delaySeconds,
-        delayMinutes,
-        nextRunSeconds,
-        nextRunMinutes,
         now: new Date().toISOString(),
-        nextRun: new Date(Date.now() + nextRunMs).toISOString(),
-      }
+        nextRun: new Date(Date.now() + deltaMs).toISOString(),
+      },
     );
 
-    setTimeout(run, nextRunMs, SETTINGS.RESOLVE_STAKING_ROUNDS, true, true);
+    const SCHEDULE_PING_INTERVAL_MS = 10 * 60 * 1_000;
+    let remaining = deltaMs;
+    function schedulePingCheck() {
+      remaining = farthestRound.date.getTime() - Date.now();
+      logger.log("schedule ping check", {
+        SCHEDULE_PING_INTERVAL_MS,
+        remaining,
+      });
+      if (remaining > SCHEDULE_PING_INTERVAL_MS) {
+        setTimeout(schedulePingCheck, SCHEDULE_PING_INTERVAL_MS);
+        return;
+      }
+      setTimeout(run, remaining, SETTINGS.RESOLVE_STAKING_ROUNDS, true, true);
+    }
+    schedulePingCheck();
   }
 }
 
 run(
   SETTINGS.RESOLVE_STAKING_ROUNDS,
   SETTINGS.RUN_CURRENT_ROUND,
-  SETTINGS.SCHEDULE_NEXT_ROUNDS
+  SETTINGS.SCHEDULE_NEXT_ROUNDS,
 );

@@ -1,10 +1,10 @@
 import type { Wallet } from "@coral-xyz/anchor";
 import type { Connection, Transaction } from "@solana/web3.js";
 
-import { logger } from "./logger";
-import { wait } from "./utils";
-import { DEFAULT_RPC_URL, SETTINGS } from "./settings";
 import { RPC_WRITE_DELAY } from "./connection";
+import { logger } from "./logger";
+import { DEFAULT_RPC_URL, SETTINGS } from "./settings";
+import { wait } from "./utils";
 
 export const REBROADCAST_POLLING_DELAY =
   SETTINGS.RPC_URL === DEFAULT_RPC_URL ? 15_000 : 5_000;
@@ -48,7 +48,7 @@ export async function customSendAndConfirmTransaction({
   });
   const signature = await connection.sendRawTransaction(
     serialized,
-    SEND_OPTIONS
+    SEND_OPTIONS,
   );
 
   logger.debug("Sent transaction", { signature, lastValidBlockHeight });
@@ -68,7 +68,7 @@ export async function customSendAndConfirmTransaction({
       },
       () => {
         status = "failed";
-      }
+      },
     );
 
   if (!rebroadcast) {
