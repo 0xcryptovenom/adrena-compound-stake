@@ -252,15 +252,8 @@ async function run(resolve = true, current = true, schedule = true) {
     }
 
     const deltaMs = farthestRound.date.getTime() - Date.now();
-    const deltaSeconds = deltaMs * 1_000;
-    const deltaMinutes = deltaSeconds * 60;
-
-    const delaySeconds = (0.5 + Math.random()) * 60 * 3;
-    const delayMinutes = delaySeconds / 60;
-
-    const nextRunMs = delaySeconds * 1_000 + deltaMs;
-    const nextRunSeconds = nextRunMs / 1_000;
-    const nextRunMinutes = nextRunSeconds / 60;
+    const deltaSeconds = deltaMs / 1_000;
+    const deltaMinutes = deltaSeconds / 60;
 
     logger.log(
       "scheduling next run on farthest staking round with an included artificial delay",
