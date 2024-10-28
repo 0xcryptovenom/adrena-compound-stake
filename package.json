@@ -1,7 +1,7 @@
 {
   "name": "adrena-compound-stake",
   "description": "Node.js script / binary to automatically claim & re-stake Adrena Protocol's ALP / ADX staking rewards.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "homepage": "https://github.com/0xcryptovenom/adrena-compound-stake/#readme",
   "repository": {
     "type": "git",

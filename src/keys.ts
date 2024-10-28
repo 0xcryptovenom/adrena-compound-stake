@@ -11,7 +11,7 @@ export function initSecretKeysFromFile(walletSecretKeysFilePath: string) {
     const secretKeysFile = readFileSync(walletSecretKeysFilePath, "utf-8");
     for (const secretKeyLine of secretKeysFile.split("\n")) {
       const secretKey = secretKeyLine.trim();
-      if (secretKey.startsWith("#")) continue;
+      if (!secretKey || secretKey.startsWith("#")) continue;
       secretKeys.push(secretKey);
     }
   } catch (err) {
