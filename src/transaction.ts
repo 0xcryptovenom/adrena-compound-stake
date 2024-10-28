@@ -48,7 +48,7 @@ export async function customSendAndConfirmTransaction({
   });
   const signature = await connection.sendRawTransaction(
     serialized,
-    SEND_OPTIONS
+    SEND_OPTIONS,
   );
 
   logger.debug("Sent transaction", { signature, lastValidBlockHeight });
@@ -68,7 +68,7 @@ export async function customSendAndConfirmTransaction({
       },
       () => {
         status = "failed";
-      }
+      },
     );
 
   if (!rebroadcast) {
