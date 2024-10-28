@@ -2,6 +2,8 @@
 
 This software is provided for educational purposes, **use at your own risk**.
 
+# adrena-compound-stake [![npm](https://img.shields.io/npm/v/adrena-compound-stake)](https://www.npmjs.com/package/adrena-compound-stake)
+
 # Compound (Claim + Stake) $ADX Liquidity Mining Rewards Every 6 Hours Automatically
 
 [Adrena Protocol](https://www.adrena.xyz/)'s [$ADX](https://birdeye.so/token/AuQaustGiaqxRvj2gtCdrd22PBzTn8kM3kEPEkZCtuDw?chain=solana) [Liquidity Mining Rewards](https://docs.adrena.xyz/about-adrena/staking) can be claimed every 6hours.
@@ -117,7 +119,7 @@ WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" adrena-compound-sta
 # WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" npm start
 ```
 
-```
+```bash
 RESOLVE_STAKING_ROUNDS=1 RUN_CURRENT_ROUND=1 SCHEDULE_NEXT_ROUNDS=1 RPC_URL="https://mainnet.helius-rpc.com/?api-key=xxx" WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" npm start
 # RESOLVE_STAKING_ROUNDS=1 RUN_CURRENT_ROUND=1 SCHEDULE_NEXT_ROUNDS=1 RPC_URL="https://mainnet.helius-rpc.com/?api-key=xxx" WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" npx adrena-compound-stake
 # RESOLVE_STAKING_ROUNDS=1 RUN_CURRENT_ROUND=1 SCHEDULE_NEXT_ROUNDS=1 RPC_URL="https://mainnet.helius-rpc.com/?api-key=xxx" WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" adrena-compound-stake
@@ -125,13 +127,13 @@ RESOLVE_STAKING_ROUNDS=1 RUN_CURRENT_ROUND=1 SCHEDULE_NEXT_ROUNDS=1 RPC_URL="htt
 
 ### Skip resolving of staking rounds + claim [+ stake] immediately + schedule claim + stake on next rounds
 
-```
+```bash
 RESOLVE_STAKING_ROUNDS=0 RUN_CURRENT_ROUND=1 SCHEDULE_NEXT_ROUNDS=1 WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" npm start
 ```
 
 ### Skip resolving of staking rounds + skip claim [+ stake] immediately + schedule claim + stake on next rounds
 
-```
+```bash
 RESOLVE_STAKING_ROUNDS=0 RUN_CURRENT_ROUND=0 SCHEDULE_NEXT_ROUNDS=1 WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" npm start
 ```
 
