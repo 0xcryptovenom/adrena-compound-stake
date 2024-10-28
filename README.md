@@ -15,13 +15,31 @@ More precisely, the Node.js script / program has the following capabilities:
 - check the start date of the next staking rounds (both `$ALP`'s & `$ADX`'s).
 - sign & send a transaction using the first provided wallet secret key to resolve the current staking round if necessary.
 - for all the provided user wallet secret keys (base58-encoded, ie: the format used when exporting from Phantom wallet):
-  - schedule **claiming `$ADX` rewards + adding to `$ADX` liquid stake** for both `$ADX` & `$ALP` staking rewards **to the farthest round start date & time**
+  - schedule **claiming `$ADX` rewards + adding to `$ADX` liquid stake OR upgrading the lowest-amount max-locked stake** for both `$ADX` & `$ALP` staking rewards **to the farthest round start date & time**
   - _example: `$ALP` next round starts in 1hour, `$ADX` next round starts in 2hours, the script will schedule claim + stake in 2hours on the start of the next `$ADX` round_
   - claim + stake schedules have a integrated artifical delay amounting to a few minutes to preserve privacy.
 
 # Basic usage
 
-## Install & build
+## Install or build from sources
+
+### Install from the npm package registry
+
+Install globally using npm:
+
+```
+npm i -g adrena-compound-stake
+```
+
+If you just want to give it a test run, you can use npx instead:
+
+```
+npx adrena-compound-stake
+```
+
+### Build from sources
+
+If you don't want to install from npm, you can build this project from sources, after cloning the repository using git.
 
 ```
 npm install && npm run build
@@ -40,6 +58,8 @@ Developped on:
 The absolute path to a text file containing one or multiple Solana wallet base58-encoded-string secret keys, one per line.
 Secret keys can be commented-out / skipped / disabled by prefixing the secret key with a leading `#`.
 
+Not providing this environment variable will cause the program to exit early in its initialization.
+
 ### `RPC_URL`
 
 The URL to a Solana RPC, if none is provided, the default `"https://api.mainnet-beta.solana.com"` will be used instead.
@@ -49,28 +69,58 @@ This project has been developped (and is being used!) with a free [Helius RPC fo
 
 ### `RUN_CURRENT_ROUND`
 
-Whether or not the program should claim `$ADX` rewards + add to liquid stake ~immediately (before the start of the next farthest round).
+Whether or not the program should claim `$ADX` rewards + stake ~immediately (before the start of the next farthest round).
 Useful when rewards haven't been claimed for the current round or for a while, in order to get back on track for compounding rewards.
+
+This behavior is enabled by default.
 
 ### `SCHEDULE_NEXT_ROUNDS`
 
-Whether or not the program should schedule the claim of `$ADX` rewards + add to liquid stake at the start of the next farthest round.
+Whether or not the program should schedule the claim of `$ADX` rewards + stake at the start of the next farthest round.
 The essence of this program.
+
+This behavior is enabled by default.
 
 ### `RESOLVE_STAKING_ROUNDS`
 
 Whether or not the program should attempt to resolve stale staking rounds when necessary.
 
+This behavior is enabled by default.
+
+### `CLAIM_REWARDS`
+
+Whether or not the program should attempt claiming rewards when running the current round (only has an effect when `RUN_CURRENT_ROUND` is not disabled).
+
+This behavior is enabled by default.
+
+### `SCHEDULE_PING_INTERVAL_SECONDS`
+
+The time interval in seconds, at which the program checks for the remaining time before the next scheduled round.
+This interval is useful to improve reliability of the script when the program can be paused (ie: a laptop going to sleep) without adding an additional delay to the schedule.
+On a stable server on the other hand, in order to not clutter logs unnecessarily, this value can be increased.
+
+The default value is `10 * 60 = 600` seconds: 10minutes.
+
+### `UPGRADE_MAX_LOCKED_ADX_STAKE`
+
+Whether or not the program should use the available `$ADX` to upgrade the max-locked stake it can find at initialization, instead of adding to liquid stake.
+
+This behavior is not enabled by default. In other words: by default the program adds to liquid stake, but with this option enabled, it will upgrade the max-locked (540days) stake with the lowest amount `$ADX` amount.
+
 ## Examples
 
 ### Resolve staking rounds + claim [+ stake] immediately + schedule claim + stake on next rounds
 
-```
-WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" npm start
+```bash
+WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" adrena-compound-stake
+# WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" npx adrena-compound-stake
+# WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" npm start
 ```
 
 ```
 RESOLVE_STAKING_ROUNDS=1 RUN_CURRENT_ROUND=1 SCHEDULE_NEXT_ROUNDS=1 RPC_URL="https://mainnet.helius-rpc.com/?api-key=xxx" WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" npm start
+# RESOLVE_STAKING_ROUNDS=1 RUN_CURRENT_ROUND=1 SCHEDULE_NEXT_ROUNDS=1 RPC_URL="https://mainnet.helius-rpc.com/?api-key=xxx" WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" npx adrena-compound-stake
+# RESOLVE_STAKING_ROUNDS=1 RUN_CURRENT_ROUND=1 SCHEDULE_NEXT_ROUNDS=1 RPC_URL="https://mainnet.helius-rpc.com/?api-key=xxx" WALLET_SECRET_KEYS_FILE_PATH="/abs/path/to/secret/keys/file" adrena-compound-stake
 ```
 
 ### Skip resolving of staking rounds + claim [+ stake] immediately + schedule claim + stake on next rounds
