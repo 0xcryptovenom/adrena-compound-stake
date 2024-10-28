@@ -82,7 +82,9 @@ export async function customSendAndConfirmTransaction({
       blockHeight,
       lastValidBlockHeight,
     });
-    connection.sendRawTransaction(serialized, SEND_OPTIONS);
+    connection.sendRawTransaction(serialized, SEND_OPTIONS).catch((err) => {
+      logger.error("failed to broadcast transaction ...", { err });
+    });
     blockHeight = await connection.getBlockHeight();
   }
 
