@@ -341,20 +341,23 @@ async function run({
         SCHEDULE_PING_INTERVAL_MS,
         remaining,
       });
-      if (remaining > SCHEDULE_PING_INTERVAL_MS) {
-        setTimeout(schedulePingCheck, SCHEDULE_PING_INTERVAL_MS);
-        return;
-      }
-      setTimeout(
-        () =>
+
+      let callback = schedulePingCheck;
+      let delay = SCHEDULE_PING_INTERVAL_MS;
+
+      if (remaining <= SCHEDULE_PING_INTERVAL_MS) {
+        callback = () =>
           run({
             resolveStakingRounds: SETTINGS.RESOLVE_STAKING_ROUNDS,
             runCurrentRound: true,
             scheduleNextRounds: true,
-          }),
-        remaining,
-      );
+          });
+        delay = remaining;
+      }
+
+      setTimeout(callback, delay);
     }
+
     schedulePingCheck();
   }
 }
