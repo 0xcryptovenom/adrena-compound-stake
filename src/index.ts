@@ -20,7 +20,7 @@ import {
 } from "./staking.js";
 import { initializeUserState } from "./state.js";
 import { TOKENS } from "./tokens.js";
-import { customSendAndConfirmTransaction } from "./transaction.js";
+import { sendAndConfirmTransaction } from "./transaction.js";
 import { wait } from "./utils.js";
 
 process.on("SIGUSR2", () => {
@@ -71,7 +71,7 @@ async function runForUser(user: (typeof state)["users"][string]) {
         stakedToken,
       });
 
-      await customSendAndConfirmTransaction({
+      await sendAndConfirmTransaction({
         connection: CONNECTION,
         transaction: claimTx,
         wallet: user.wallet,
@@ -128,7 +128,7 @@ async function runForUser(user: (typeof state)["users"][string]) {
           amount: nativeToUi(amount, TOKENS.ADX.decimals),
         });
 
-        await customSendAndConfirmTransaction({
+        await sendAndConfirmTransaction({
           connection: CONNECTION,
           transaction: stakeTx,
           wallet: user.wallet,
@@ -161,7 +161,7 @@ async function runForUser(user: (typeof state)["users"][string]) {
           amount: nativeToUi(amount, TOKENS.ADX.decimals),
         });
 
-        await customSendAndConfirmTransaction({
+        await sendAndConfirmTransaction({
           connection: CONNECTION,
           transaction: stakeTx,
           wallet: user.wallet,
@@ -279,7 +279,7 @@ async function run({
             user.keys.public.key,
           ).transaction();
 
-        await customSendAndConfirmTransaction({
+        await sendAndConfirmTransaction({
           connection: CONNECTION,
           transaction: resolveStakingRoundTx,
           wallet: user.wallet,
