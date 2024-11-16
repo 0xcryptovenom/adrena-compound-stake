@@ -36,7 +36,7 @@ export type BaseStakeMethodBuilderParams = {
   amount: anchor.BN;
 };
 
-export async function makeAddLiquidADXStakeMethodBuilder({
+export function makeAddLiquidADXStakeMethodBuilder({
   program,
   userStakingPda,
   owner,
@@ -92,17 +92,17 @@ export async function makeAddLiquidADXStakeMethodBuilder({
     .preInstructions(preInstructions);
 }
 
-export async function makeUpgradeLockedADXStakeMethodBuilder({
+export function makeUpgradeLockedADXStakeMethodBuilder({
   program,
   userStakingPda,
   owner,
   ownerBuffer,
   stakingRewardAta,
   stakingRewardLmAta,
-  stakeResolutionThreadId,
   amount,
+  lockedStakeId,
 }: BaseStakeMethodBuilderParams & {
-  stakeResolutionThreadId: anchor.BN;
+  lockedStakeId: anchor.BN;
 }) {
   const preInstructions: TransactionInstruction[] = [];
   const modifyComputeUnitsIx = ComputeBudgetProgram.setComputeUnitLimit({
@@ -119,8 +119,8 @@ export async function makeUpgradeLockedADXStakeMethodBuilder({
 
   return program.methods
     .upgradeLockedStake({
-      stakeResolutionThreadId: stakeResolutionThreadId,
       amount,
+      lockedStakeId,
       lockedDays: null,
     })
     .accountsStrict({

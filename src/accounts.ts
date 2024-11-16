@@ -13,7 +13,6 @@ import {
   GOVERNANCE_PROGRAM_ID,
   GOVERNANCE_REALM_NAME,
 } from "./programs/governance";
-import { SABLIER_THREAD_PROGRAM_ID } from "./programs/thread";
 
 export const TOKEN_PROGRAM_ID_BUFFER = TOKEN_PROGRAM_ID.toBuffer();
 export const STAKING_STR_BUFFER = Buffer.from("staking");
@@ -132,19 +131,6 @@ export const GENESIS_LOCK_PDA = PublicKey.findProgramAddressSync(
   [Buffer.from("genesis_lock"), MAIN_POOL_PDA.toBuffer()],
   ADRENA_PROGRAM_ID,
 )[0];
-
-export const THREAD_STR_BUFFER = Buffer.from("thread");
-
-export const getThreadAddressPda = (threadId: anchor.BN) => {
-  return PublicKey.findProgramAddressSync(
-    [
-      THREAD_STR_BUFFER,
-      TRANSFER_AUTHORITY_PDA_BUFFER,
-      threadId.toArrayLike(Buffer, "le", 8),
-    ],
-    SABLIER_THREAD_PROGRAM_ID,
-  )[0];
-};
 
 export const GOVERNANCE_TOKEN_MINT = PublicKey.findProgramAddressSync(
   [Buffer.from("governance_token_mint")],

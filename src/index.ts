@@ -95,30 +95,31 @@ async function runForUser(user: (typeof state)["users"][string]) {
   logger.log("retrieved ADX token balance!", { amount });
 
   if (!!amount && !amount.isZero()) {
-    const maxLockedStakeResolutionThreadId = (
+    const maxLockedStakeId = (
       SETTINGS.UPGRADE_MAX_LOCKED_ADX_STAKE &&
       !!user.staking.ADX.stakes.locked.active.maxLocked[0] &&
       typeof user.staking.ADX.stakes.locked.active.maxLocked[0] === "object" &&
-      "stakeResolutionThreadId" in
-        user.staking.ADX.stakes.locked.active.maxLocked[0] &&
-      !!user.staking.ADX.stakes.locked.active.maxLocked[0]
-        .stakeResolutionThreadId
-        ? user.staking.ADX.stakes.locked.active.maxLocked[0]
-            .stakeResolutionThreadId
+      "id" in user.staking.ADX.stakes.locked.active.maxLocked[0] &&
+      !!user.staking.ADX.stakes.locked.active.maxLocked[0].id
+        ? user.staking.ADX.stakes.locked.active.maxLocked[0].id
         : null
     ) as anchor.BN;
-    if (maxLockedStakeResolutionThreadId) {
+    if (maxLockedStakeId) {
+      logger.log("building upgrade max-locked stake instructions", {
+        maxLockedStakeId,
+      });
+
       try {
         const addLiquidADXStakeMethodBuilder =
-          await makeUpgradeLockedADXStakeMethodBuilder({
+          makeUpgradeLockedADXStakeMethodBuilder({
             program: user.program,
             userStakingPda: user.staking.ADX.userStakingPda,
             owner: user.keys.public.key,
             ownerBuffer: user.keys.public.buffer,
             stakingRewardAta: user.tokens.USDC.ata,
             stakingRewardLmAta: user.tokens.ADX.ata,
-            stakeResolutionThreadId: maxLockedStakeResolutionThreadId,
             amount,
+            lockedStakeId: maxLockedStakeId,
           });
         const stakeTx = await addLiquidADXStakeMethodBuilder.transaction();
 
@@ -144,7 +145,7 @@ async function runForUser(user: (typeof state)["users"][string]) {
     } else {
       try {
         const addLiquidADXStakeMethodBuilder =
-          await makeAddLiquidADXStakeMethodBuilder({
+          makeAddLiquidADXStakeMethodBuilder({
             program: user.program,
             userStakingPda: user.staking.ADX.userStakingPda,
             owner: user.keys.public.key,
@@ -189,7 +190,7 @@ async function run({
   runCurrentRound: boolean;
   scheduleNextRounds: boolean;
 }) {
-  logger.debug("running staking round threads checking loop");
+  logger.debug("running staking rounds checking loop");
 
   const nextRounds = (
     await Object.keys(STAKING_STAKED_TOKENS).reduce(
@@ -198,7 +199,7 @@ async function run({
 
         const stakedToken = _stakedToken as keyof typeof STAKING_STAKED_TOKENS;
 
-        logger.debug("running staking round threads checking iteration", {
+        logger.debug("running staking round checking iteration", {
           stakedToken,
         });
 
