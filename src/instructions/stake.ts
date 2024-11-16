@@ -1,4 +1,4 @@
-import anchor from "@coral-xyz/anchor";
+import type anchor from "@coral-xyz/anchor";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   ComputeBudgetProgram,
@@ -18,11 +18,9 @@ import {
   MAIN_POOL_PDA,
   TRANSFER_AUTHORITY_PDA,
   getGovernanceGoverningTokenOwnerRecordPda,
-  getThreadAddressPda,
 } from "../accounts";
 import { type ADRENA_PROGRAM, ADRENA_PROGRAM_ID } from "../programs/adrena";
 import { GOVERNANCE_PROGRAM_ID } from "../programs/governance";
-import { SABLIER_THREAD_PROGRAM_ID } from "../programs/thread";
 import {
   STAKING_REWARD_LM_TOKEN_INFO,
   STAKING_STAKED_TOKENS,
@@ -49,7 +47,7 @@ export async function makeAddLiquidADXStakeMethodBuilder({
 }: BaseStakeMethodBuilderParams) {
   const preInstructions: TransactionInstruction[] = [];
   const modifyComputeUnitsIx = ComputeBudgetProgram.setComputeUnitLimit({
-    units: 500_000,
+    units: 250_000,
   });
   preInstructions.push(modifyComputeUnitsIx);
 
@@ -59,13 +57,6 @@ export async function makeAddLiquidADXStakeMethodBuilder({
     stakingRewardTokenVaultPda,
     stakingLmRewardTokenVaultPda,
   } = STAKING_STAKED_TOKENS.ADX;
-
-  const userStakingAccount =
-    await program.account.userStaking.fetchNullable(userStakingPda);
-  const threadId =
-    userStakingAccount?.stakesClaimCronThreadId ?? new anchor.BN(Date.now());
-
-  const stakesClaimCronThread = getThreadAddressPda(threadId);
 
   return program.methods
     .addLiquidStake({
@@ -82,7 +73,6 @@ export async function makeAddLiquidADXStakeMethodBuilder({
       transferAuthority: TRANSFER_AUTHORITY_PDA,
       userStaking: userStakingPda,
       staking: stakingPda.publicKey,
-      stakesClaimCronThread,
       cortex: CORTEX_PDA,
       lmTokenMint: STAKING_REWARD_LM_TOKEN_INFO.mint,
       governanceTokenMint: GOVERNANCE_TOKEN_MINT,
@@ -91,7 +81,6 @@ export async function makeAddLiquidADXStakeMethodBuilder({
       governanceGoverningTokenHolding: GOVERNANCE_GOVERNING_TOKEN_HOLDING,
       governanceGoverningTokenOwnerRecord:
         getGovernanceGoverningTokenOwnerRecordPda(ownerBuffer),
-      sablierProgram: SABLIER_THREAD_PROGRAM_ID,
       governanceProgram: GOVERNANCE_PROGRAM_ID,
       adrenaProgram: ADRENA_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
@@ -117,7 +106,7 @@ export async function makeUpgradeLockedADXStakeMethodBuilder({
 }) {
   const preInstructions: TransactionInstruction[] = [];
   const modifyComputeUnitsIx = ComputeBudgetProgram.setComputeUnitLimit({
-    units: 500_000,
+    units: 250_000,
   });
   preInstructions.push(modifyComputeUnitsIx);
 
@@ -127,8 +116,6 @@ export async function makeUpgradeLockedADXStakeMethodBuilder({
     stakingRewardTokenVaultPda,
     stakingLmRewardTokenVaultPda,
   } = STAKING_STAKED_TOKENS.ADX;
-
-  const stakeResolutionThread = getThreadAddressPda(stakeResolutionThreadId);
 
   return program.methods
     .upgradeLockedStake({
@@ -147,7 +134,6 @@ export async function makeUpgradeLockedADXStakeMethodBuilder({
       transferAuthority: TRANSFER_AUTHORITY_PDA,
       userStaking: userStakingPda,
       staking: stakingPda.publicKey,
-      stakeResolutionThread,
       cortex: CORTEX_PDA,
       lmTokenMint: STAKING_REWARD_LM_TOKEN_INFO.mint,
       governanceTokenMint: GOVERNANCE_TOKEN_MINT,
@@ -156,7 +142,6 @@ export async function makeUpgradeLockedADXStakeMethodBuilder({
       governanceGoverningTokenHolding: GOVERNANCE_GOVERNING_TOKEN_HOLDING,
       governanceGoverningTokenOwnerRecord:
         getGovernanceGoverningTokenOwnerRecordPda(ownerBuffer),
-      sablierProgram: SABLIER_THREAD_PROGRAM_ID,
       governanceProgram: GOVERNANCE_PROGRAM_ID,
       adrenaProgram: ADRENA_PROGRAM_ID,
       systemProgram: SystemProgram.programId,

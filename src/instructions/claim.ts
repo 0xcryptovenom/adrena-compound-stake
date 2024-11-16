@@ -30,11 +30,11 @@ export function makeClaimStakesMethodBuilder(
 ) {
   const preInstructions: TransactionInstruction[] = [];
 
-  const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
-    units: 800_000,
+  const modifyComputeUnitsIx = ComputeBudgetProgram.setComputeUnitLimit({
+    units: 250_000,
   });
 
-  preInstructions.push(modifyComputeUnits);
+  preInstructions.push(modifyComputeUnitsIx);
 
   const {
     stakingPda,
@@ -64,7 +64,9 @@ export function makeClaimStakesMethodBuilder(
   };
 
   return program.methods
-    .claimStakes()
+    .claimStakes({
+      lockedStakeIndexes: null,
+    })
     .accounts(accounts)
     .preInstructions(preInstructions);
 }
