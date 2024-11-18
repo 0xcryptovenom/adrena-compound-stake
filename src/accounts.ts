@@ -1,4 +1,4 @@
-import anchor from "@coral-xyz/anchor";
+import anchor, { type IdlAccounts } from "@coral-xyz/anchor";
 
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -176,3 +176,40 @@ export const getGovernanceGoverningTokenOwnerRecordPda = (
     GOVERNANCE_PROGRAM_ID,
   )[0];
 };
+
+export const findCustodyAddress = (mint: PublicKey) => {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('custody'),
+      MAIN_POOL_PDA.toBuffer(),
+      mint.toBuffer(),
+    ],
+    ADRENA_PROGRAM_ID,
+  )[0];
+}
+
+export const findCustodyTokenAccountAddress = (mint: PublicKey) => {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('custody_token_account'),
+      MAIN_POOL_PDA.toBuffer(),
+      mint.toBuffer(),
+    ],
+    ADRENA_PROGRAM_ID,
+  )[0];
+}
+
+type Accounts = IdlAccounts<Adrena>;
+
+export type Cortex = Accounts['cortex'];
+export type VestRegistry = Accounts['vestRegistry'];
+export type Custody = Accounts['custody'];
+export type Pool = Accounts['pool'];
+export type Position = Accounts['position'];
+export type UserStaking = Accounts['userStaking'];
+export type Staking = Accounts['staking'];
+export type Vest = Accounts['vest'];
+export type GenesisLock = Accounts['genesisLock'];
+export type UserProfile = Accounts['userProfile'];
+
+export type LockedStake = UserStaking['lockedStakes'][0];
