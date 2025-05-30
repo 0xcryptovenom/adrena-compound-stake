@@ -21,10 +21,7 @@ import {
 } from "../accounts";
 import { type ADRENA_PROGRAM, ADRENA_PROGRAM_ID } from "../programs/adrena";
 import { GOVERNANCE_PROGRAM_ID } from "../programs/governance";
-import {
-  STAKING_REWARD_LM_TOKEN_INFO,
-  STAKING_STAKED_TOKENS,
-} from "../staking";
+import { STAKING_REWARD_LM_TOKEN_INFO, STAKING_STAKED_TOKEN } from "../staking";
 
 export type BaseStakeMethodBuilderParams = {
   program: ADRENA_PROGRAM;
@@ -47,7 +44,7 @@ export function makeAddLiquidADXStakeMethodBuilder({
 }: BaseStakeMethodBuilderParams) {
   const preInstructions: TransactionInstruction[] = [];
   const modifyComputeUnitsIx = ComputeBudgetProgram.setComputeUnitLimit({
-    units: 250_000,
+    units: 500_000,
   });
   preInstructions.push(modifyComputeUnitsIx);
 
@@ -56,7 +53,7 @@ export function makeAddLiquidADXStakeMethodBuilder({
     stakingStakedTokenVaultPda,
     stakingRewardTokenVaultPda,
     stakingLmRewardTokenVaultPda,
-  } = STAKING_STAKED_TOKENS.ADX;
+  } = STAKING_STAKED_TOKEN;
 
   return program.methods
     .addLiquidStake({
@@ -106,7 +103,7 @@ export function makeUpgradeLockedADXStakeMethodBuilder({
 }) {
   const preInstructions: TransactionInstruction[] = [];
   const modifyComputeUnitsIx = ComputeBudgetProgram.setComputeUnitLimit({
-    units: 250_000,
+    units: 500_000,
   });
   preInstructions.push(modifyComputeUnitsIx);
 
@@ -115,7 +112,7 @@ export function makeUpgradeLockedADXStakeMethodBuilder({
     stakingStakedTokenVaultPda,
     stakingRewardTokenVaultPda,
     stakingLmRewardTokenVaultPda,
-  } = STAKING_STAKED_TOKENS.ADX;
+  } = STAKING_STAKED_TOKEN;
 
   return program.methods
     .upgradeLockedStake({

@@ -18,7 +18,7 @@ import { wait } from "./utils";
 export const DEFAULT_REBROADCAST_DELAY =
   SETTINGS.RPC_URL === DEFAULT_RPC_URL ? 15_000 : 5_000;
 export const DEFAULT_REBROADCAST = true;
-export const DEFAULT_MAX_RESIGNS = 5;
+export const DEFAULT_MAX_RESIGNS = 0;
 
 export const DEFAULT_SIMULATE = true;
 export const DEFAULT_RESIMULATE = DEFAULT_SIMULATE;
@@ -136,7 +136,7 @@ export async function sendAndConfirmTransaction({
 
   logger.debug("Fetched latest blockhash", { commitment, blockhashResponse });
 
-  const lastValidBlockHeight = blockhashResponse.lastValidBlockHeight - 150;
+  const lastValidBlockHeight = blockhashResponse.lastValidBlockHeight;
 
   transaction.recentBlockhash = blockhashResponse.blockhash;
   transaction.feePayer = wallet.publicKey;
@@ -215,6 +215,7 @@ export async function sendAndConfirmTransaction({
   ) {
     if (rebroadcastDelay) await wait(rebroadcastDelay);
     logger.debug("broadcasting transaction ...", {
+      status,
       signature,
       blockHeight,
       lastValidBlockHeight,

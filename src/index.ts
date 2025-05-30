@@ -15,7 +15,8 @@ import { logger } from "./logger.js";
 import { READ_ONLY_ADRENA_PROGRAM } from "./programs/adrena.js";
 import { SETTINGS } from "./settings.js";
 import {
-  STAKING_STAKED_TOKENS,
+  STAKING_STAKED_TOKEN,
+  STAKING_STAKE_TOKEN_NAME,
   getNextStakingRoundStartDate,
 } from "./staking.js";
 import { initializeUserState } from "./state.js";
@@ -44,52 +45,49 @@ logger.log("initialized users state!", Object.keys(state.users));
 await wait(RPC_READ_DELAY);
 
 async function runForUser(user: (typeof state)["users"][string]) {
-  for (const _stakedToken in STAKING_STAKED_TOKENS) {
-    const stakedToken = _stakedToken as keyof typeof STAKING_STAKED_TOKENS;
+  const stakedToken = STAKING_STAKE_TOKEN_NAME;
 
-    if (!SETTINGS.CLAIM_REWARDS) {
-      continue;
-    }
+  if (!SETTINGS.CLAIM_REWARDS) {
+    return;
+  }
 
-    logger.log("running [resolve staking round] + claim iteration", {
+  logger.log("running [resolve staking round] + claim iteration", {
+    publicKey: user.keys.public.base58,
+    stakedToken,
+  });
+
+  try {
+    const claimTx = await makeClaimStakesMethodBuilder(
+      user.program,
+      user.staking.userStakingPda,
+      user.keys.public.key,
+      user.tokens.USDC.ata,
+      user.tokens.ADX.ata,
+    ).transaction();
+
+    logger.log("sending claim transaction ...", {
       publicKey: user.keys.public.base58,
       stakedToken,
     });
 
-    try {
-      const claimTx = await makeClaimStakesMethodBuilder(
-        user.program,
-        stakedToken,
-        user.staking[stakedToken].userStakingPda,
-        user.keys.public.key,
-        user.tokens.USDC.ata,
-        user.tokens.ADX.ata,
-      ).transaction();
-
-      logger.log("sending claim transaction ...", {
+    await sendAndConfirmTransaction({
+      connection: CONNECTION,
+      transaction: claimTx,
+      wallet: user.wallet,
+    }).then((signature) => {
+      logger.log("confirmed claim transaction!", {
         publicKey: user.keys.public.base58,
         stakedToken,
+        signature,
       });
-
-      await sendAndConfirmTransaction({
-        connection: CONNECTION,
-        transaction: claimTx,
-        wallet: user.wallet,
-      }).then((signature) => {
-        logger.log("confirmed claim transaction!", {
-          publicKey: user.keys.public.base58,
-          stakedToken,
-          signature,
-        });
-      });
-    } catch (err) {
-      logger.error("Failed to claim", { stakedToken, err });
-    }
-
-    await wait(RPC_WRITE_DELAY);
+    });
+  } catch (err) {
+    logger.error("Failed to claim", { stakedToken, err });
   }
 
-  logger.log("[resolve staking round] + claim loop completed!");
+  await wait(RPC_WRITE_DELAY);
+
+  logger.log("[resolve staking round] + claim completed!");
   logger.log("checking ADX balance ...");
   const amount = await getTokenAccountBalance(CONNECTION, user.tokens.ADX.ata);
   logger.log("retrieved ADX token balance!", { amount });
@@ -97,11 +95,11 @@ async function runForUser(user: (typeof state)["users"][string]) {
   if (!!amount && !amount.isZero()) {
     const maxLockedStakeId = (
       SETTINGS.UPGRADE_MAX_LOCKED_ADX_STAKE &&
-      !!user.staking.ADX.stakes.locked.active.maxLocked[0] &&
-      typeof user.staking.ADX.stakes.locked.active.maxLocked[0] === "object" &&
-      "id" in user.staking.ADX.stakes.locked.active.maxLocked[0] &&
-      !!user.staking.ADX.stakes.locked.active.maxLocked[0].id
-        ? user.staking.ADX.stakes.locked.active.maxLocked[0].id
+      !!user.staking.stakes.locked.active.maxLocked[0] &&
+      typeof user.staking.stakes.locked.active.maxLocked[0] === "object" &&
+      "id" in user.staking.stakes.locked.active.maxLocked[0] &&
+      !!user.staking.stakes.locked.active.maxLocked[0].id
+        ? user.staking.stakes.locked.active.maxLocked[0].id
         : null
     ) as anchor.BN;
     if (maxLockedStakeId) {
@@ -113,7 +111,7 @@ async function runForUser(user: (typeof state)["users"][string]) {
         const addLiquidADXStakeMethodBuilder =
           makeUpgradeLockedADXStakeMethodBuilder({
             program: user.program,
-            userStakingPda: user.staking.ADX.userStakingPda,
+            userStakingPda: user.staking.userStakingPda,
             owner: user.keys.public.key,
             ownerBuffer: user.keys.public.buffer,
             stakingRewardAta: user.tokens.USDC.ata,
@@ -147,7 +145,7 @@ async function runForUser(user: (typeof state)["users"][string]) {
         const addLiquidADXStakeMethodBuilder =
           makeAddLiquidADXStakeMethodBuilder({
             program: user.program,
-            userStakingPda: user.staking.ADX.userStakingPda,
+            userStakingPda: user.staking.userStakingPda,
             owner: user.keys.public.key,
             ownerBuffer: user.keys.public.buffer,
             stakingRewardAta: user.tokens.USDC.ata,
@@ -190,55 +188,43 @@ async function run({
   runCurrentRound: boolean;
   scheduleNextRounds: boolean;
 }) {
-  logger.debug("running staking rounds checking loop");
+  logger.debug("checking staking round");
 
-  const nextRounds = (
-    await Object.keys(STAKING_STAKED_TOKENS).reduce(
-      async (accP, _stakedToken) => {
-        const acc = await accP;
+  const nextRound = await (async () => {
+    const stakedToken = STAKING_STAKE_TOKEN_NAME;
 
-        const stakedToken = _stakedToken as keyof typeof STAKING_STAKED_TOKENS;
+    logger.debug("running staking round checking iteration", {
+      stakedToken,
+    });
 
-        logger.debug("running staking round checking iteration", {
-          stakedToken,
+    const programFetchedStakingAccount =
+      await READ_ONLY_ADRENA_PROGRAM.account.staking
+        .fetch(STAKING_STAKED_TOKEN.stakingPda.publicKey)
+        .catch((err) => {
+          logger.error("failed to fetch program staking account", {
+            stakedToken,
+            err,
+          });
+          throw new Error(
+            "unexpected failure fetching program staking account",
+            { cause: err },
+          );
         });
 
-        const programFetchedStakingAccount =
-          await READ_ONLY_ADRENA_PROGRAM.account.staking
-            .fetch(STAKING_STAKED_TOKENS[stakedToken].stakingPda.publicKey)
-            .catch((err) => {
-              logger.error("failed to fetch program staking account", {
-                stakedToken,
-                err,
-              });
-              return null;
-            });
+    const nextRound = {
+      stakedToken,
+      date: getNextStakingRoundStartDate(
+        programFetchedStakingAccount.currentStakingRound.startTime.toNumber(),
+      ),
+    };
+    logger.log("next staking round start:", {
+      stakedToken,
+      date: nextRound.date.toISOString(),
+      localeTime: nextRound.date.toLocaleTimeString(),
+    });
 
-        if (!programFetchedStakingAccount) {
-          return acc;
-        }
-
-        const nextRoundStartDate = getNextStakingRoundStartDate(
-          programFetchedStakingAccount.currentStakingRound.startTime.toNumber(),
-        );
-
-        const nextRound = { stakedToken, date: nextRoundStartDate };
-        acc.push(nextRound);
-        logger.log("next staking round start:", {
-          stakedToken,
-          date: nextRoundStartDate.toISOString(),
-          localeTime: nextRoundStartDate.toLocaleTimeString(),
-        });
-
-        await wait(RPC_READ_DELAY);
-
-        return acc;
-      },
-      Promise.resolve([]) as Promise<
-        Array<{ stakedToken: keyof typeof STAKING_STAKED_TOKENS; date: Date }>
-      >,
-    )
-  ).sort((a, b) => b.date.getTime() - a.date.getTime());
+    return nextRound;
+  })();
 
   const users = Object.values(state.users);
   if (!users.length) {
@@ -247,21 +233,17 @@ async function run({
   }
 
   const now = new Date();
-  let staleRounds = false;
-  for (const round of nextRounds) {
-    if (now > round.date) {
-      staleRounds = true;
-      logger.log(
-        "encountered stale round which needs to be resolved before rewards can be claimed ...",
-        {
-          round,
-          resolveStakingRounds,
-        },
-      );
-      if (!resolveStakingRounds) {
-        continue;
-      }
+  const round = nextRound;
+  if (now > round.date) {
+    logger.log(
+      "encountered stale round which needs to be resolved before rewards can be claimed ...",
+      {
+        round,
+        resolveStakingRounds,
+      },
+    );
 
+    if (resolveStakingRounds) {
       const user = users[0];
       logger.log(
         "should attempt resolving staking round for token with first available user ...",
@@ -295,9 +277,7 @@ async function run({
 
       await wait(RPC_WRITE_DELAY);
     }
-  }
 
-  if (staleRounds && resolveStakingRounds) {
     // We attempted to resolve stale rounds... Let's re-run.
     // We're only attempting to resolve stale rounds once.
     return run({
@@ -314,18 +294,17 @@ async function run({
   }
 
   if (scheduleNextRounds) {
-    const farthestRound = nextRounds[0];
-    if (!farthestRound) {
+    if (!nextRound) {
       logger.error("no next round found, exiting...");
       return;
     }
 
-    const deltaMs = farthestRound.date.getTime() - Date.now();
+    const deltaMs = nextRound.date.getTime() - Date.now();
     const deltaSeconds = deltaMs / 1_000;
     const deltaMinutes = deltaSeconds / 60;
 
     logger.log("scheduling next run on farthest staking round", {
-      farthestRound,
+      nextRound,
       deltaMs,
       deltaSeconds,
       deltaMinutes,
@@ -337,7 +316,7 @@ async function run({
       SETTINGS.SCHEDULE_PING_INTERVAL_SECONDS * 1_000;
     let remaining = deltaMs;
     function schedulePingCheck() {
-      remaining = farthestRound.date.getTime() - Date.now();
+      remaining = nextRound.date.getTime() - Date.now();
       logger.log("schedule ping check", {
         SCHEDULE_PING_INTERVAL_MS,
         remaining,

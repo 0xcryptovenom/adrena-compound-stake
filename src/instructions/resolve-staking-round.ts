@@ -3,10 +3,7 @@ import { type PublicKey, SystemProgram } from "@solana/web3.js";
 
 import { CORTEX, CORTEX_PDA, TRANSFER_AUTHORITY_PDA } from "../accounts";
 import { type ADRENA_PROGRAM, ADRENA_PROGRAM_ID } from "../programs/adrena";
-import {
-  STAKING_REWARD_LM_TOKEN_INFO,
-  STAKING_STAKED_TOKENS,
-} from "../staking";
+import { STAKING_REWARD_LM_TOKEN_INFO, STAKING_STAKED_TOKEN } from "../staking";
 import type { ADRENA_TOKENS } from "../tokens";
 
 export function makeResolveStakingRoundMethodBuilder(
@@ -19,7 +16,7 @@ export function makeResolveStakingRoundMethodBuilder(
     stakingStakedTokenVaultPda,
     stakingRewardTokenVaultPda,
     stakingLmRewardTokenVaultPda,
-  } = STAKING_STAKED_TOKENS[stakedToken];
+  } = STAKING_STAKED_TOKEN;
 
   return program.methods.resolveStakingRound().accountsStrict({
     cortex: CORTEX_PDA,

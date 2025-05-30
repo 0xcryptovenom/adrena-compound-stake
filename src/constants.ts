@@ -8,30 +8,6 @@ export const BPS = 10_000;
 
 export const GENESIS_REWARD_ADX_PER_USDC = 5;
 
-export const ALP_STAKE_MULTIPLIERS = Object.freeze({
-  90: {
-    USDC: 0.75,
-    ADX: 1.0,
-  },
-  180: {
-    USDC: 1.5,
-    ADX: 1.75,
-  },
-  360: {
-    USDC: 2.25,
-    ADX: 2.5,
-  },
-  540: {
-    USDC: 3.0,
-    ADX: 3.25,
-  },
-} as const);
-export const ALP_LOCK_PERIODS = Object.freeze(
-  Object.keys(
-    ALP_STAKE_MULTIPLIERS,
-  ) as unknown as keyof typeof ALP_STAKE_MULTIPLIERS,
-);
-
 export const ADX_STAKE_MULTIPLIERS = Object.freeze({
   0: {
     USDC: 1,

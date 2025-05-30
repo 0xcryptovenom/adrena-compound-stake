@@ -4,9 +4,9 @@ This software is provided for educational purposes, **use at your own risk**.
 
 # adrena-compound-stake [![npm](https://img.shields.io/npm/v/adrena-compound-stake)](https://www.npmjs.com/package/adrena-compound-stake)
 
-# Compound (Claim + Stake) $ADX Liquidity Mining Rewards Every 6 Hours Automatically
+# "Compound" (Claim + Stake) $ADX Liquidity Mining Rewards Every 6 Hours Automatically
 
-[Adrena Protocol](https://www.adrena.xyz/)'s [$ADX](https://birdeye.so/token/AuQaustGiaqxRvj2gtCdrd22PBzTn8kM3kEPEkZCtuDw?chain=solana) [Liquidity Mining Rewards](https://docs.adrena.xyz/about-adrena/staking) can be claimed every 6hours.
+[Adrena Protocol](https://www.adrena.xyz/)'s [$ADX](https://birdeye.so/token/AuQaustGiaqxRvj2gtCdrd22PBzTn8kM3kEPEkZCtuDw?chain=solana) [Liquidity Mining Rewards](https://docs.adrena.xyz/tokenomics/adx) can be claimed every 6hours.
 
 In order to compound rewards efficiently, `$ADX` rewards must be claimed & **re-staked** every 6hours, at the end of each staking round.
 
@@ -14,12 +14,10 @@ This project aims at automating the compounding of `$ADX` liquidity mining rewar
 
 More precisely, the Node.js script / program has the following capabilities:
 
-- check the start date of the next staking rounds (both `$ALP`'s & `$ADX`'s).
+- check the start date of the next `$ADX` staking round.
 - sign & send a transaction using the first provided wallet secret key to resolve the current staking round if necessary.
 - for all the provided user wallet secret keys (base58-encoded, ie: the format used when exporting from Phantom wallet):
-  - schedule **claiming `$ADX` rewards + adding to `$ADX` liquid stake OR upgrading the lowest-amount max-locked stake** for both `$ADX` & `$ALP` staking rewards **to the farthest round start date & time**
-  - _example: `$ALP` next round starts in 1hour, `$ADX` next round starts in 2hours, the script will schedule claim + stake in 2hours on the start of the next `$ADX` round_
-  - claim + stake schedules have a integrated artifical delay amounting to a few minutes to preserve privacy.
+  - schedule **claiming `$ADX` staking rewards + adding to `$ADX` liquid stake OR upgrading the lowest-amount max-locked stake to the next round start date & time**
 
 # Basic usage
 
@@ -71,14 +69,14 @@ This project has been developped (and is being used!) with a free [Helius RPC fo
 
 ### `RUN_CURRENT_ROUND`
 
-Whether or not the program should claim `$ADX` rewards + stake ~immediately (before the start of the next farthest round).
+Whether or not the program should claim `$ADX` rewards + stake ~immediately (before the start of the next round).
 Useful when rewards haven't been claimed for the current round or for a while, in order to get back on track for compounding rewards.
 
 This behavior is enabled by default.
 
 ### `SCHEDULE_NEXT_ROUNDS`
 
-Whether or not the program should schedule the claim of `$ADX` rewards + stake at the start of the next farthest round.
+Whether or not the program should schedule the claim of `$ADX` rewards + stake at the start of the next round.
 The essence of this program.
 
 This behavior is enabled by default.
