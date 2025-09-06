@@ -196,6 +196,16 @@ export const findCustodyTokenAccountAddress = (mint: PublicKey) => {
   )[0];
 };
 
+export const LM_TOKEN_MINT = PublicKey.findProgramAddressSync(
+  [Buffer.from("lm_token_mint")],
+  ADRENA_PROGRAM_ID,
+)[0];
+
+export const LM_TOKEN_TREASURY = PublicKey.findProgramAddressSync(
+  [Buffer.from("lm_token_treasury"), LM_TOKEN_MINT.toBuffer()],
+  ADRENA_PROGRAM_ID,
+)[0];
+
 type Accounts = IdlAccounts<Adrena>;
 
 export type Cortex = Accounts["cortex"];

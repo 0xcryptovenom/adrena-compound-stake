@@ -10,6 +10,7 @@ import {
   CORTEX,
   CORTEX_PDA,
   GENESIS_LOCK_PDA,
+  LM_TOKEN_TREASURY,
   MAIN_POOL_PDA,
   TRANSFER_AUTHORITY_PDA,
 } from "../accounts";
@@ -50,6 +51,7 @@ export function makeClaimStakesMethodBuilder(
     staking: stakingPda.publicKey,
     cortex: CORTEX_PDA,
     lmTokenMint: STAKING_REWARD_LM_TOKEN_INFO.mint,
+    lmTokenTreasury: LM_TOKEN_TREASURY,
     adrenaProgram: ADRENA_PROGRAM_ID,
     systemProgram: SystemProgram.programId,
     tokenProgram: TOKEN_PROGRAM_ID,
